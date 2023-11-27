@@ -1,0 +1,107 @@
+%% Note on the "simulated DBS fq" vs "real DBS fq":
+
+% We use resolution dt=0.1ms. Thus, the DBS fq in the simulation ("simulated DBS fq") is 
+% affected by dt. Concretely, suppose the "real DBS fq" is Fs_DBS = 130Hz, 
+% the "inter-DBS-pulse-interval" in the simulatiion is:
+% K_inc = round(1e3/dt/Fs_DBS) = 7.7ms, so the "simulated DBS fq" for 
+% this simulation is 1000/7.7 = 129.9Hz
+
+% Note that the "round" fn (not "floor" fn) is implemented in computing the
+% inter-DBS-pulse-interval; "round" is the same as "floor" when the decimal <=4, 
+% similar effect as "floor" when the decimal =5, 
+% and more accurate than "floor" when the decimal >5
+%
+
+% Thus, the "simulated DBS fq" in the simulation is a little different from
+% the "real DBS fq", if the "real DBS fq" can't be divisible by
+% 1(sec)/dt = 1000/0.1 = 1e4
+
+%%
+
+
+tspk = zeros(1,Trial_num);
+
+% --- Depression mode
+tau_D = tau_d_Dep*ones(1,Trial_num); 
+tau_F = tau_f_Dep*ones(1,Trial_num);
+U = U_Dep*ones(1,Trial_num);
+
+% --- Potentiation mode
+facil = floor(perc_facilitation*Trial_num);
+tau_D(1,1:facil) = tau_d_Fac*ones(1,facil);
+tau_F(1,1:facil) = tau_f_Fac*ones(1,facil);
+U(1,1:floor(perc_facilitation*Trial_num)) = U_Fac;
+
+% --- Psudeu Linear mode
+ps_lin = floor(perc_psudue*Trial_num);
+tau_D(1,1+facil:facil + ps_lin) = tau_d_Psu*ones(1,ps_lin); 
+tau_F(1,1+facil:facil + ps_lin) = tau_f_Psu*ones(1,ps_lin);
+U(1,1+facil:facil + ps_lin) = U_Psu;
+%%
+R_disc = ones(1,Trial_num);
+u_disc = zeros(1,Trial_num);
+I_disc = zeros(1,Trial_num);
+
+R_cont = zeros(L,Trial_num);
+u_cont = zeros(L,Trial_num);
+I_cont = zeros(L,Trial_num);
+I_cont_delay = zeros(L,Trial_num);
+
+R_cont(1,:) = 1;
+u_cont(1,:) = 0;
+%% Total presynaptic input (Excitation + Inhibition) induced by both spikes and DBS pulses
+k = 1;
+k_dbs = ST*1e3/dt + 0; % ST = 10(s), or any start time for DBS
+%k_dbs = 0;
+k_sp = 2;
+K_inc = round(1e3/dt/Fs_DBS);
+Delta_syn = zeros(1,Trial_num);
+
+for t=0:dt:T*1e3
+    
+    indx_active = find( V_sp(k,:)==1 );
+    Delta_syn(indx_active) = 1;
+    if (k>=k_dbs && ~mod(k,K_inc))
+        indx_active = 1:activation_percentage*Trial_num;
+        Delta_syn(indx_active) = 1;
+    end
+    
+        if tspk(indx_active)==0
+            tspk(indx_active) = t;
+        end   
+        u_cont(k,:) = u_disc .* exp(- (t-tspk) ./ tau_F ) + Delta_syn .* (U .*(1 - u_disc.*exp(- (t-tspk) ./ tau_F ))); % T by Trial_num
+           
+        R_cont(k,:) = R_disc .* (1 - Delta_syn.*u_cont(k,:)) .* exp(- (t-tspk) ./ tau_D ) + 1 - exp(- (t-tspk) ./ tau_D );
+           
+        I_cont(k,:) = I_disc .* exp(- (t-tspk) ./ tau_syn ) + A * Delta_syn .* u_cont(k,:) .* R_cont(max(k-1,1),:);
+        
+        % I_cont(k,:) is consistent with the original TM paper,
+        % and reads: I = (I-) + A*Delta*(u+)*(r-); I use "max(k-1,1)" instead of
+        % "k-1" to eliminate the index error in the first iteration.
+        
+    if ~isempty(indx_active)
+        u_disc(indx_active) = u_cont(k,indx_active);
+        R_disc(indx_active) = R_cont(k,indx_active);
+        I_disc(indx_active) = I_cont(k,indx_active);
+        
+    end
+    
+    tspk(indx_active) = t;
+    
+    indx_0 = find(tspk==0);
+    if ~isempty(indx_0)
+    u_cont(k,indx_0) = 0;
+    R_cont(k,indx_0) = 1;
+    I_cont(k,indx_0) = 0;
+    u_disc(indx_0) = 0;
+    R_disc(indx_0) = 1;
+    I_disc(indx_0) = 0;
+    end
+%    [V_LIF] = LIF_model;
+    k = k+1;
+    Delta_syn = zeros(1,Trial_num);
+    indx_active = [];
+end
+for i = 1:Trial_num
+I_cont_delay(1+Delay(i):L,i) = I_cont(1:L-Delay(i),i);
+end
