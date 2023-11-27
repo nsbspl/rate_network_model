@@ -1,2 +1,0 @@
-The code opt_single_ODE_Vim_exp.mat runs the single-ensemble firing rate model of Vim during Vim-DBS (Tian et al. (2023)). This code can generate the sigmoid parameters {c,s,k} used in the initial parameter vector of the network
-model fit in this paper.
