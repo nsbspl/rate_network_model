@@ -1,0 +1,1 @@
+in fitting to high (or low) fq DBS, the weight of low (or high) DBS fq data is set to 0 in opt
