@@ -1,0 +1,7 @@
+The ref para vec (optimal para shown in fig 2) is obtained by "using the ini para vec used in the paper" and "run one preliminary fit, then 4 rounds of Global Stage, 40 rounds of Refining Stage"
+Thus, for each "perturbed ini para vec", I "run one preliminary fit, then 4 rounds of Global Stage, 40 rounds of Refining Stage" for the optimization, to obtain the resulting para vec, and compute the abs pct diff from the ref para vec.
+
+I also compute the pho_inh for each resulting para vec, to show that the resulting mechanism is BA consistently.
+
+The folder name "perturb pct = x" means that this folder contains data with each component of ini para generated in [-x%, +x%] error
+margin compared with the ref ini para. "abs_pct_diff_x" is the mean of the absolute pct difference from the ref ini para (recorded for each component then take the average). 
