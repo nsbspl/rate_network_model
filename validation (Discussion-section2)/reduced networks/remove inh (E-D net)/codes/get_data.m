@@ -1,0 +1,1 @@
+ini_para = [ini_para(2),ini_para(6:10)];
